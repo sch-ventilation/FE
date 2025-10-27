@@ -5,7 +5,7 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
