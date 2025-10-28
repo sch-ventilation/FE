@@ -11,18 +11,22 @@ import {
   Line,
   Area,
 } from "recharts";
+import { apiCall, API_CONFIG } from "../../config/api";
 
-const SensorDataChart = ({ data, isDarkMode }) => {
+const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
+  const [graphData, setGraphData] = useState([]);
   const [selectedSensor, setSelectedSensor] = useState("미세먼지");
   const [sliderStyle, setSliderStyle] = useState({ width: 0, left: 0 });
   const containerRef = useRef(null);
   const buttonRefs = useRef({});
   const [timeRange, setTimeRange] = useState("일");
   const [showCalendar, setShowCalendar] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  // 하드코딩된 날짜: 2025-09-29T23:29:00
+  const hardcodedDate = new Date('2025-09-29T23:29:00');
+  const [currentDate, setCurrentDate] = useState(hardcodedDate);
+  const [selectedDay, setSelectedDay] = useState(hardcodedDate.getDate());
+  const [selectedMonth, setSelectedMonth] = useState(hardcodedDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(hardcodedDate.getFullYear());
   const scrollContainerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -108,38 +112,69 @@ const SensorDataChart = ({ data, isDarkMode }) => {
     { name: "휘발성유기화합물", unit: "µg/㎡", color: "#ef4444" },
   ];
 
-  // 센서 데이터 생성
-  const sensorData = Array.from({ length: 24 }, (_, i) => {
-    const hour = i;
-    const timeStr = `${hour}시`;
-    
-    // 각 센서별 더미 데이터 (일부 위험 값 포함)
-    const basePM10 = 40 + Math.sin(i / 6 * Math.PI) * 40; // 0~80 범위로 일부 위험 값 포함
-    const basePM25 = 20 + Math.sin(i / 6 * Math.PI) * 20; // 0~40 범위로 일부 위험 값 포함
-    const baseCO2 = 800 + Math.sin(i / 10 * Math.PI) * 400; // 400~1200 범위로 일부 위험 값 포함
-    const baseTemp = 22 + Math.sin(i / 12 * Math.PI) * 8; // 14~30 범위로 일부 위험 값 포함
-    const baseHumidity = 50 + Math.cos(i / 12 * Math.PI) * 35; // 15~85 범위로 일부 위험 값 포함
-    const baseVOC = 300 + Math.sin(i / 8 * Math.PI) * 150; // 150~450 범위로 일부 위험 값 포함
-    
-    const data = {
-      time: timeStr,
-      미세먼지: Math.round(basePM10),
-      초미세먼지: Math.round(basePM25),
-      이산화탄소: Math.round(baseCO2),
-      온도: Math.round(baseTemp * 10) / 10,
-      습도: Math.round(baseHumidity),
-      휘발성유기화합물: Math.round(baseVOC),
-    };
+  // API에서 데이터 가져오기
+  const fetchGraphData = async () => {
+    try {
+      const formattedDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${selectedDay.toString().padStart(2, '0')}`;
+      const response = await apiCall(`${API_CONFIG.ENDPOINTS.TIMESERIES}?date=${formattedDate}`, {
+        method: 'GET',
+      });
 
-    // 각 센서별로 안정/위험 여부 표시
-    sensors.forEach(sensor => {
-      const value = data[sensor.name];
-      const isSafe = isSafeValue(sensor.name, value);
-      data[`${sensor.name}_isSafe`] = isSafe;
-    });
+      if (response.points && Array.isArray(response.points) && response.points.length > 0) {
+        const sensorData = Array.from({ length: 24 }, (_, i) => {
+          const hour = i;
+          const timeStr = `${hour}시`;
+          
+          const apiData = response.points.find(point => {
+            const date = new Date(point.timestamp);
+            return date.getHours() === hour;
+          });
+          
+          const processedData = {
+            time: timeStr,
+            미세먼지: apiData?.pm10 || null,
+            초미세먼지: apiData?.pm25 || null,
+            이산화탄소: apiData?.co2 || null,
+            온도: apiData?.temperature || null,
+            습도: apiData?.humidity || null,
+            휘발성유기화합물: apiData?.tvoc || null,
+            air_quality_index: apiData?.air_quality_index || null,
+          };
 
-    return data;
-  });
+          // 각 센서별로 안정/위험 여부 표시
+          sensors.forEach(sensor => {
+            const value = processedData[sensor.name];
+            const isSafe = value !== null ? isSafeValue(sensor.name, value) : true;
+            processedData[`${sensor.name}_isSafe`] = isSafe;
+          });
+
+          return processedData;
+        });
+        
+        setGraphData(sensorData);
+      }
+    } catch (error) {
+      console.error('그래프 데이터 가져오기 실패:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchGraphData();
+  }, [selectedYear, selectedMonth, selectedDay]);
+
+  // 현재 날짜 버튼으로 자동 스크롤
+  useEffect(() => {
+    setTimeout(() => {
+      if (scrollContainerRef.current && timeRange === "일") {
+        const buttonElement = scrollContainerRef.current.querySelector(`button:nth-child(${selectedDay})`);
+        if (buttonElement) {
+          buttonElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+    }, 300);
+  }, [timeRange, selectedDay]);
+
+  const sensorData = graphData;
 
   const currentSensor = sensors.find(s => s.name === selectedSensor);
   const dataKey = selectedSensor;
@@ -326,7 +361,7 @@ const SensorDataChart = ({ data, isDarkMode }) => {
             style={{
               width: `${sliderStyle.width}px`,
               left: `${sliderStyle.left}px`,
-              zIndex: 1
+              zIndex: 0
             }}
           />
         </div>
@@ -429,7 +464,7 @@ const SensorDataChart = ({ data, isDarkMode }) => {
           
           {/* 년 버튼들 */}
           {timeRange === "년" && Array.from({ length: 5 }, (_, i) => {
-            const year = new Date().getFullYear() - 2 + i;
+            const year = hardcodedDate.getFullYear() - 2 + i;
             const isSelected = selectedYear === year;
             
             return (
@@ -573,11 +608,52 @@ const SensorDataChart = ({ data, isDarkMode }) => {
               }}
             />
             <Tooltip 
+              wrapperStyle={{ zIndex: 9999 }}
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   const data = payload[0].payload;
                   const value = data[selectedSensor];
                   const isExceeded = !data[`${selectedSensor}_isSafe`];
+                  
+                  // 초과 수치 계산
+                  let deviation = 0;
+                  let deviationText = '';
+                  let arrowIcon = '';
+                  
+                  if (isExceeded) {
+                    const criteria = sensorCriteria[selectedSensor];
+                    if (criteria) {
+                      if (criteria.min !== undefined && criteria.max !== undefined) {
+                        // 온도, 습도: 범위 체크
+                        if (selectedSensor === '온도') {
+                          if (value < criteria.min) {
+                            deviation = criteria.min - value;
+                            deviationText = `${deviation.toFixed(1)}℃`;
+                            arrowIcon = '↓';
+                          } else if (value > criteria.max) {
+                            deviation = value - criteria.max;
+                            deviationText = `${deviation.toFixed(1)}℃`;
+                            arrowIcon = '↑';
+                          }
+                        } else if (selectedSensor === '습도') {
+                          if (value < criteria.min) {
+                            deviation = criteria.min - value;
+                            deviationText = `${deviation.toFixed(1)}%`;
+                            arrowIcon = '↓';
+                          } else if (value > criteria.max) {
+                            deviation = value - criteria.max;
+                            deviationText = `${deviation.toFixed(1)}%`;
+                            arrowIcon = '↑';
+                          }
+                        }
+                      } else if (criteria.max !== undefined) {
+                        // CO2, PM10, PM25, TVOC: 최대값 체크
+                        deviation = value - criteria.max;
+                        deviationText = `${deviation.toFixed(1)} 초과`;
+                        arrowIcon = '↑';
+                      }
+                    }
+                  }
                   
                   return (
                     <div
@@ -589,7 +665,7 @@ const SensorDataChart = ({ data, isDarkMode }) => {
                         width: 320,
                         boxShadow: "0 10px 25px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05)",
                         backdropFilter: "blur(10px)",
-                        transform: 'translate(10px, -300px)',
+                        zIndex: 10000
                       }}
                     >
                       <strong style={{ fontSize: 18, color: '#1f2937', marginBottom: 16, display: 'block' }}>{label}</strong>
@@ -599,6 +675,21 @@ const SensorDataChart = ({ data, isDarkMode }) => {
                           <span style={{ fontWeight: 600, color: '#6b7280' }}>{selectedSensor}:</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isExceeded && <span style={{ color: '#ef4444', fontSize: 18 }}>🚨</span>}
+                            
+                            {isExceeded && (
+                              <span style={{ 
+                                fontSize: 12, 
+                                color: '#ef4444', 
+                                fontWeight: 600,
+                                backgroundColor: '#fef2f2',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid #fecaca'
+                              }}>
+                                {arrowIcon} {deviationText}
+                              </span>
+                            )}
+
                             <span style={{ fontWeight: 500, color: '#1f2937' }}>
                               {value}{currentSensor?.unit}
                             </span>
@@ -609,12 +700,12 @@ const SensorDataChart = ({ data, isDarkMode }) => {
                       <div style={{ 
                         marginTop: 16, 
                         padding: 16, 
-                borderRadius: 12,
+                        borderRadius: 12,
                         backgroundColor: isExceeded ? '#fef2f2' : '#f0fdf4',
                         border: `1px solid ${isExceeded ? '#fecaca' : '#bbf7d0'}`
                       }}>
                         <div style={{ fontSize: 17, fontWeight: 700, color: '#1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>종합 공기질 점수: <span style={{ color: '#1f2937' }}>{Math.round(value * 100 / (sensorCriteria[selectedSensor]?.max || 100))}</span></span>
+                          <span>공기질 점수: <span style={{ color: '#1f2937' }}>{data.air_quality_index !== null && data.air_quality_index !== undefined ? data.air_quality_index : Math.round(value * 100 / (sensorCriteria[selectedSensor]?.max || 100))}</span></span>
                           <span style={{ fontSize: 16, fontWeight: 600, color: isExceeded ? '#ef4444' : '#10b981' }}>
                             {isExceeded ? '나쁨' : '정상'}
                           </span>
