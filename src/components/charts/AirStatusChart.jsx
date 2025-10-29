@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 
 import {
 
@@ -86,6 +86,227 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
   }, [timeRange, hardcodedDate]);
 
 
+
+  // 시간 형식 변환 함수 (1시간 간격, 24시는 23시 59분으로 표시)
+  const formatTime = (hour) => {
+
+    if (hour === 24) {
+      return '23시 59분';
+    }
+    return `${hour}시`;
+
+  };
+
+
+
+  // 날짜를 YYYY-MM-DD 형식으로 변환
+
+  const formatDateForAPI = (year, month, day) => {
+
+    const paddedMonth = month.toString().padStart(2, '0');
+
+    const paddedDay = day.toString().padStart(2, '0');
+
+    return `${year}-${paddedMonth}-${paddedDay}`;
+
+  };
+
+
+
+  // 환기 예측 시점 계산 (현재시간 + 30분)
+
+  const getPredictionTime = () => {
+
+    const currentTimeStr = currentTime || '2025-09-29T23:29:00'; // API에서 받은 현재시간 또는 기본값
+
+    const currentTimeDate = new Date(currentTimeStr);
+
+    const predictionTime = new Date(currentTimeDate.getTime() + 30 * 60 * 1000); // 30분 후
+
+    
+    // 23시 59분이면 24시로 반환 (23시 59분으로 표시됨)
+    if (predictionTime.getHours() === 23 && predictionTime.getMinutes() === 59) {
+      return 24;
+    }
+    
+    return predictionTime.getHours(); // 시간만 반환 (1시간 간격이므로)
+  };
+
+  // 예측 데이터가 있는지 확인 (pred_30min이 있으면 표시)
+  const hasPredictionData = predictionData && 
+    predictionData.pred_30min && 
+    predictionData.status_by_metric;
+
+  // API에서 그래프 데이터 가져오기
+  const fetchGraphData = async (date) => {
+
+    try {
+
+      setLoading(true);
+
+      const formattedDate = formatDateForAPI(selectedYear, selectedMonth, date);
+
+      console.log(`그래프 데이터 API 호출: ${formattedDate}`);
+
+      
+
+      const response = await apiCall(`${API_CONFIG.ENDPOINTS.TIMESERIES}?date=${formattedDate}`, {
+
+        method: 'GET',
+
+      });
+
+      
+
+      if (response.points && Array.isArray(response.points) && response.points.length > 0) {
+
+        // 24시간 데이터 생성 (1시간 간격)
+        const fullDayData = [];
+        const predictionHour = getPredictionTime();
+
+        
+
+        // 현재 시간까지의 데이터만 표시 (API 데이터는 0시부터 23시까지)
+        const currentTimeStr = currentTime || '2025-09-29T23:29:00';
+        const currentTimeDate = new Date(currentTimeStr);
+        const currentHour = currentTimeDate.getHours();
+        const currentMinute = currentTimeDate.getMinutes();
+        
+        // 예측 시점 (현재시간 + 30분)
+        const predictionTimeDate = new Date(currentTimeDate.getTime() + 30 * 60 * 1000);
+        const predHour = predictionTimeDate.getHours();
+        const predMinute = predictionTimeDate.getMinutes();
+        
+        // 예측 시점이 23시 59분이면 24시로 표시
+        const predictionDisplayHour = (predHour === 23 && predMinute === 59) ? 24 : predHour;
+        
+        // 최대 시간: 초록색 그래프는 항상 0~23시까지만 표시
+        // 예측 시점이 24시면 노란 점만 24시에 표시
+        // 현재시간으로부터 30분 뒤의 날짜와 선택된 날짜가 동일할 때만 노란색 점 표시
+        const isSamePredictionDay = (
+          selectedYear === predictionTimeDate.getFullYear() &&
+          selectedMonth === (predictionTimeDate.getMonth() + 1) &&
+          date === predictionTimeDate.getDate()
+        );
+        const maxHour = 23;
+        const include24Hour = predictionDisplayHour === 24 && hasPredictionData && isSamePredictionDay;
+        
+        console.log('현재 시간:', currentTimeStr);
+        console.log('현재 시간 (파싱):', currentHour, '시', currentMinute, '분');
+        console.log('예측 시점:', predHour, '시', predMinute, '분');
+        console.log('예측 표시 시간:', predictionDisplayHour);
+        console.log('최대 시간:', maxHour);
+        
+        for (let hour = 0; hour <= maxHour; hour++) {
+          const timeStr = formatTime(hour);
+
+          // 예측 시점인지 확인
+          const isPredictionHour = hour === predictionDisplayHour;
+          
+          // API 데이터에서 해당 시간대 데이터 찾기
+          const apiData = response.points.find(point => {
+            const date = new Date(point.timestamp);
+            return date.getHours() === hour;
+          });
+          
+          fullDayData.push({
+            time: timeStr,
+            temperature: apiData?.temperature || null,
+            humidity: apiData?.humidity || null,
+            co2: apiData?.co2 || null,
+            pm10: apiData?.pm10 || null,
+            pm25: apiData?.pm25 || null,
+            tvoc: apiData?.tvoc || null,
+            air_quality_index: apiData?.air_quality_index || null,
+            status: apiData?.status || null,
+            predictedVent: isPredictionHour && hasPredictionData && isSamePredictionDay, // 예측 날짜가 현재시간+30분의 날짜와 동일할 때만 표시
+            // 예측 데이터가 있고 예측 시점이면 예측 데이터 사용
+            ...(hasPredictionData && isPredictionHour && isSamePredictionDay ? {
+              pred_30min: predictionData.pred_30min,
+              status_by_metric: predictionData.status_by_metric,
+              aqi_score: predictionData.aqi_score
+            } : {})
+          });
+        }
+        
+        // 예측 시점이 24시면 노란 점만 추가
+        if (include24Hour) {
+          fullDayData.push({
+            time: '23시 59분',
+            temperature: null,
+            humidity: null,
+            co2: null,
+            pm10: null,
+            pm25: null,
+            tvoc: null,
+            air_quality_index: null,
+            status: null,
+            predictedVent: true,
+            pred_30min: predictionData.pred_30min,
+            status_by_metric: predictionData.status_by_metric,
+            aqi_score: predictionData.aqi_score
+          });
+        }
+        
+        const processedData = fullDayData;
+        
+
+        setGraphData(processedData);
+
+      } else {
+
+        console.warn('API 응답에 points 데이터가 없습니다. 기본 그래프 구조를 생성합니다.');
+
+        // 현재 시간까지의 빈 데이터 생성 (1시간 간격)
+        const currentTimeStr = currentTime || '2025-09-29T23:29:00';
+        const currentTimeDate = new Date(currentTimeStr);
+        const currentHour = currentTimeDate.getHours();
+        const currentMinute = currentTimeDate.getMinutes();
+        
+        // 23시 59분까지 표시하려면 24시까지 포함 (23시면 항상 24시 포함)
+        const maxHour = (currentHour === 23) ? 24 : currentHour;
+        
+        const emptyData = [];
+        for (let hour = 0; hour <= maxHour; hour++) {
+          emptyData.push({
+            time: formatTime(hour),
+          temperature: null,
+
+          humidity: null,
+
+          co2: null,
+
+          pm10: null,
+
+          pm25: null,
+
+          tvoc: null,
+
+          air_quality_index: null,
+
+          status: null,
+
+          predictedVent: false,
+
+          });
+        }
+        setGraphData(emptyData);
+
+      }
+
+    } catch (error) {
+
+      console.error('그래프 데이터 가져오기 실패:', error);
+
+      setGraphData([]);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
 
   // 날짜가 변경될 때 API 호출
 
@@ -255,257 +476,6 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
 
 
 
-  // 시간 형식 변환 함수 (1시간 간격, 24시는 23시 59분으로 표시)
-  const formatTime = (hour) => {
-
-    if (hour === 24) {
-      return '23시 59분';
-    }
-    return `${hour}시`;
-
-  };
-
-
-
-  // 날짜를 YYYY-MM-DD 형식으로 변환
-
-  const formatDateForAPI = (year, month, day) => {
-
-    const paddedMonth = month.toString().padStart(2, '0');
-
-    const paddedDay = day.toString().padStart(2, '0');
-
-    return `${year}-${paddedMonth}-${paddedDay}`;
-
-  };
-
-
-
-  // 환기 예측 시점 계산 (현재시간 + 30분)
-
-  const getPredictionTime = () => {
-
-    const currentTimeStr = currentTime || '2025-09-29T23:29:00'; // API에서 받은 현재시간 또는 기본값
-
-    const currentTimeDate = new Date(currentTimeStr);
-
-    const predictionTime = new Date(currentTimeDate.getTime() + 30 * 60 * 1000); // 30분 후
-
-    
-    // 23시 59분이면 24시로 반환 (23시 59분으로 표시됨)
-    if (predictionTime.getHours() === 23 && predictionTime.getMinutes() === 59) {
-      return 24;
-    }
-    
-    return predictionTime.getHours(); // 시간만 반환 (1시간 간격이므로)
-  };
-
-  // 예측 데이터가 있는지 확인 (pred_30min이 있으면 표시)
-  const hasPredictionData = predictionData && 
-    predictionData.pred_30min && 
-    predictionData.status_by_metric;
-
-  // API에서 그래프 데이터 가져오기
-
-  const fetchGraphData = async (date) => {
-
-    try {
-
-      setLoading(true);
-
-      const formattedDate = formatDateForAPI(selectedYear, selectedMonth, date);
-
-      console.log(`그래프 데이터 API 호출: ${formattedDate}`);
-
-      
-
-      const response = await apiCall(`${API_CONFIG.ENDPOINTS.TIMESERIES}?date=${formattedDate}`, {
-
-        method: 'GET',
-
-      });
-
-      
-
-      if (response.points && Array.isArray(response.points) && response.points.length > 0) {
-
-        // 24시간 데이터 생성 (1시간 간격)
-        const fullDayData = [];
-        const predictionHour = getPredictionTime();
-
-        
-
-        // 현재 시간까지의 데이터만 표시 (API 데이터는 0시부터 23시까지)
-        const currentTimeStr = currentTime || '2025-09-29T23:29:00';
-        const currentTimeDate = new Date(currentTimeStr);
-        const currentHour = currentTimeDate.getHours();
-        const currentMinute = currentTimeDate.getMinutes();
-        
-        // 예측 시점 (현재시간 + 30분)
-        const predictionTimeDate = new Date(currentTimeDate.getTime() + 30 * 60 * 1000);
-        const predHour = predictionTimeDate.getHours();
-        const predMinute = predictionTimeDate.getMinutes();
-        
-        // 예측 시점이 23시 59분이면 24시로 표시
-        const predictionDisplayHour = (predHour === 23 && predMinute === 59) ? 24 : predHour;
-        
-        // 최대 시간: 초록색 그래프는 항상 0~23시까지만 표시
-        // 예측 시점이 24시면 노란 점만 24시에 표시
-        const maxHour = 23;
-        const include24Hour = predictionDisplayHour === 24 && hasPredictionData;
-        
-        console.log('현재 시간:', currentTimeStr);
-        console.log('현재 시간 (파싱):', currentHour, '시', currentMinute, '분');
-        console.log('예측 시점:', predHour, '시', predMinute, '분');
-        console.log('예측 표시 시간:', predictionDisplayHour);
-        console.log('최대 시간:', maxHour);
-        
-        for (let hour = 0; hour <= maxHour; hour++) {
-          const timeStr = formatTime(hour);
-
-          // 예측 시점인지 확인
-          const isPredictionHour = hour === predictionDisplayHour;
-          
-          // API 데이터에서 해당 시간대 데이터 찾기
-          const apiData = response.points.find(point => {
-            const date = new Date(point.timestamp);
-            return date.getHours() === hour;
-          });
-          
-          fullDayData.push({
-            time: timeStr,
-            temperature: apiData?.temperature || null,
-            humidity: apiData?.humidity || null,
-            co2: apiData?.co2 || null,
-            pm10: apiData?.pm10 || null,
-            pm25: apiData?.pm25 || null,
-            tvoc: apiData?.tvoc || null,
-            air_quality_index: apiData?.air_quality_index || null,
-            status: apiData?.status || null,
-            predictedVent: isPredictionHour && hasPredictionData, // 예측 데이터가 있고 예측 시점이면 true
-            // 예측 데이터가 있고 예측 시점이면 예측 데이터 사용
-            ...(hasPredictionData && isPredictionHour ? {
-              pred_30min: predictionData.pred_30min,
-              status_by_metric: predictionData.status_by_metric,
-              aqi_score: predictionData.aqi_score
-            } : {})
-          });
-        }
-        
-        // 예측 시점이 24시면 노란 점만 추가
-        if (include24Hour) {
-          fullDayData.push({
-            time: '23시 59분',
-            temperature: null,
-            humidity: null,
-            co2: null,
-            pm10: null,
-            pm25: null,
-            tvoc: null,
-            air_quality_index: null,
-            status: null,
-            predictedVent: true,
-            pred_30min: predictionData.pred_30min,
-            status_by_metric: predictionData.status_by_metric,
-            aqi_score: predictionData.aqi_score
-          });
-        }
-        
-        const processedData = fullDayData;
-        
-
-        setGraphData(processedData);
-
-      } else {
-
-        console.warn('API 응답에 points 데이터가 없습니다. 기본 그래프 구조를 생성합니다.');
-
-        // 현재 시간까지의 빈 데이터 생성 (1시간 간격)
-        const currentTimeStr = currentTime || '2025-09-29T23:29:00';
-        const currentTimeDate = new Date(currentTimeStr);
-        const currentHour = currentTimeDate.getHours();
-        const currentMinute = currentTimeDate.getMinutes();
-        
-        // 23시 59분까지 표시하려면 24시까지 포함 (23시면 항상 24시 포함)
-        const maxHour = (currentHour === 23) ? 24 : currentHour;
-        
-        const emptyData = [];
-        for (let hour = 0; hour <= maxHour; hour++) {
-          emptyData.push({
-            time: formatTime(hour),
-          temperature: null,
-
-          humidity: null,
-
-          co2: null,
-
-          pm10: null,
-
-          pm25: null,
-
-          tvoc: null,
-
-          air_quality_index: null,
-
-          status: null,
-
-          predictedVent: false,
-
-          });
-        }
-        setGraphData(emptyData);
-
-      }
-
-    } catch (error) {
-
-      console.error('그래프 데이터 가져오기 실패:', error);
-
-      // 에러 발생 시에도 기본 그래프 구조 생성 (현재 시간까지)
-      const currentTimeStr = currentTime || '2025-09-29T23:29:00';
-      const currentTimeDate = new Date(currentTimeStr);
-      const currentHour = currentTimeDate.getHours();
-      const currentMinute = currentTimeDate.getMinutes();
-      
-      // 23시 59분까지 표시하려면 24시까지 포함 (23시면 항상 24시 포함)
-      const maxHour = (currentHour === 23) ? 24 : currentHour;
-      
-      const emptyData = [];
-      for (let hour = 0; hour <= maxHour; hour++) {
-        emptyData.push({
-          time: formatTime(hour),
-        temperature: null,
-
-        humidity: null,
-
-        co2: null,
-
-        pm10: null,
-
-        pm25: null,
-
-        tvoc: null,
-
-        air_quality_index: null,
-
-        status: null,
-
-        predictedVent: false,
-
-        });
-      }
-      setGraphData(emptyData);
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
-  };
-
-
-
   // 날짜별 그래프 데이터 생성 (API 데이터 사용)
 
   const getGraphDataForDay = (day) => {
@@ -592,7 +562,20 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
 
   const thresholdsData = thresholds || defaultThresholds;
 
-
+  // vent_time_estimate.cross_time(ISO) -> "M월 D일 오전/오후 h시m분" 포맷 변환
+  const formatKoreanDateTime = (isoString) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const rawHour = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = rawHour < 12 ? '오전' : '오후';
+    let hour12 = rawHour % 12;
+    if (hour12 === 0) hour12 = 12;
+    return `${month}월 ${day}일 ${ampm} ${hour12}시${minutes}분`;
+  };
 
   const calculateAQI = (item) => {
 
@@ -937,11 +920,11 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
                 color: d.aqi_score && d.aqi_score.status === 'good' ? '#059669' : 
                        d.aqi_score && d.aqi_score.status === 'moderate' ? '#d97706' : 
                        d.aqi_score && d.aqi_score.status === 'bad' ? '#dc2626' : 
-                       '#1f2937'
+                       (d.status === 'good' ? '#059669' : d.status === 'moderate' ? '#d97706' : d.status === 'bad' ? '#dc2626' : '#1f2937')
               }}>
-
-                {d.aqi_score ? (d.aqi_score.status === 'good' ? '좋음' : d.aqi_score.status === 'moderate' ? '보통' : d.aqi_score.status === 'bad' ? '위험' : d.aqi_score.status) : d.status}
-
+                {d.aqi_score 
+                  ? (d.aqi_score.status === 'good' ? '좋음' : d.aqi_score.status === 'moderate' ? '보통' : d.aqi_score.status === 'bad' ? '위험' : d.aqi_score.status) 
+                  : (d.status === 'good' ? '좋음' : d.status === 'moderate' ? '보통' : d.status === 'bad' ? '위험' : d.status)}
               </span>
 
             </div>
@@ -1825,16 +1808,16 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
 
 
     {/* 30분 후 예측 데이터 표시 */}
-    {predictionData && predictionData.pred_30min && (
-      <div className="grid grid-cols-12 gap-6 w-full min-w-0 mt-6">
-        <div className={`rounded-2xl p-6 shadow-lg col-span-9 transition-colors duration-300 min-w-0 ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={isDarkMode ? { 
-          boxShadow: '0 0 6px 2px rgba(55, 65, 81, 0.4), 0 0 12px 4px rgba(55, 65, 81, 0.2), 0 0 18px 6px rgba(55, 65, 81, 0.1)',
-          filter: 'blur(0.5px)'
-        } : {}}>
-          <h2 className={`text-lg font-semibold mb-6 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-            30분 후 공기질 예측
-          </h2>
-          
+    <div className="grid grid-cols-12 gap-6 w-full min-w-0 mt-6">
+      <div className={`rounded-2xl p-6 shadow-lg col-span-9 transition-colors duration-300 min-w-0 ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={isDarkMode ? { 
+        boxShadow: '0 0 6px 2px rgba(55, 65, 81, 0.4), 0 0 12px 4px rgba(55, 65, 81, 0.2), 0 0 18px 6px rgba(55, 65, 81, 0.1)',
+        filter: 'blur(0.5px)'
+      } : {}}>
+        <h2 className={`text-lg font-semibold mb-6 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+          30분 후 공기질 예측
+        </h2>
+        
+        {predictionData && predictionData.pred_30min ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {Object.entries(predictionData.pred_30min).map(([key, value]) => {
               const getSensorName = (key) => {
@@ -1958,71 +1941,82 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
             })}
           </div>
           
-          {/* 환기 예측 및 조언 표시 */}
-          <div className="mt-6 space-y-3">
-            {/* vent_time_estimate 표시 */}
-            {predictionData.vent_time_estimate !== undefined && (
-              <div className={`p-4 rounded-lg ${
-                predictionData.vent_time_estimate === null 
-                  ? 'bg-green-50 border border-green-200' 
-                  : 'bg-orange-50 border border-orange-200'
-              }`}>
-                <div className="flex items-center justify-center">
-                  <span className={`text-base font-semibold ${
-                    predictionData.vent_time_estimate === null ? 'text-green-700' : 'text-orange-700'
-                  }`}>
-                    {predictionData.vent_time_estimate === null 
-                      ? '30~120분 이내에 환기 필요 없음' 
-                      : `${predictionData.vent_time_estimate}분 뒤 환기 필요`}
-                  </span>
-                </div>
-              </div>
-            )}
-            
-            {/* advice 표시 */}
-            {predictionData.advice && (
-              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="flex items-center justify-center">
-                  <span className="text-base font-semibold text-blue-700">
-                    {predictionData.advice}
-                  </span>
-                </div>
-              </div>
-            )}
+        ) : (
+          <div className="flex items-center justify-center py-12">
+            <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              데이터를 불러오는 중...
+            </p>
           </div>
+        )}
+        
+        {/* 환기 예측 및 조언 표시 */}
+        <div className="mt-6 space-y-3">
+          {/* vent_time_estimate 표시 (항상 박스는 보이되 텍스트는 응답 후에만) */}
+          <div className={`${isDarkMode 
+              ? 'p-4 rounded-lg bg-gray-800 border border-gray-600' 
+              : 'p-4 rounded-lg bg-gray-100 border border-gray-200'}`}>
+            <div className="flex items-center justify-center min-h-[1.25rem]">
+              {predictionData && predictionData.vent_time_estimate !== undefined && (
+                <span className={`text-base font-semibold ${
+                  predictionData.vent_time_estimate === null 
+                    ? (isDarkMode ? 'text-green-400' : 'text-green-700') 
+                    : (isDarkMode ? 'text-orange-400' : 'text-orange-700')
+                }`}>
+                  {predictionData.vent_time_estimate === null 
+                    ? '30~120분 이내에 환기 필요 없음' 
+                    : (typeof predictionData.vent_time_estimate === 'object' && predictionData.vent_time_estimate.cross_time)
+                      ? `${formatKoreanDateTime(predictionData.vent_time_estimate.cross_time)} 환기 필요`
+                      : '환기 필요'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* advice 표시 (응답 후에만) */}
+          {predictionData && predictionData.advice && (
+            <div className={`${isDarkMode 
+                ? 'p-4 rounded-lg bg-gray-800 border border-gray-600' 
+                : 'p-4 rounded-lg bg-gray-100 border border-gray-200'}`}>
+              <div className="flex items-center justify-center">
+                <span className={`text-base font-semibold ${
+                  isDarkMode ? 'text-blue-400' : 'text-blue-700'
+                }`}>
+                  {predictionData.advice}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* 환기 예측 정확도 (아래) */}
-        <div className={`rounded-2xl p-6 shadow-lg col-span-3 transition-colors duration-300 min-w-0 ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={isDarkMode ? { 
-        boxShadow: '0 0 6px 2px rgba(55, 65, 81, 0.4), 0 0 12px 4px rgba(55, 65, 81, 0.2), 0 0 18px 6px rgba(55, 65, 81, 0.1)',
+      {/* 환기 예측 정확도 (아래) */}
+      <div className={`rounded-2xl p-6 shadow-lg col-span-3 transition-colors duration-300 min-w-0 ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={isDarkMode ? { 
+      boxShadow: '0 0 6px 2px rgba(55, 65, 81, 0.4), 0 0 12px 4px rgba(55, 65, 81, 0.2), 0 0 18px 6px rgba(55, 65, 81, 0.1)',
 
-        filter: 'blur(0.5px)'
+      filter: 'blur(0.5px)'
 
-      } : {}}>
+    } : {}}>
 
-        <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>환기 예측 정확도</h2>
+      <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>환기 예측 정확도</h2>
 
-        <div className="flex flex-col items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full">
 
-          <CircularProgress 
-            percentage={accuracyData?.overall_accuracy || 0} 
-            size={200} 
-            showIcon={false} 
-            isDarkMode={isDarkMode}
-            customColor={
-              accuracyData?.overall_accuracy >= 90 ? '#61BC90' : 
-              accuracyData?.overall_accuracy >= 80 ? '#f59e0b' : 
-              '#ef4444'
-            }
-          />
-
-        </div>
+        <CircularProgress 
+          percentage={accuracyData?.overall_accuracy || 0} 
+          size={200} 
+          showIcon={false} 
+          isDarkMode={isDarkMode}
+          customColor={
+            accuracyData?.overall_accuracy >= 90 ? '#61BC90' : 
+            accuracyData?.overall_accuracy >= 80 ? '#f59e0b' : 
+            '#ef4444'
+          }
+        />
 
       </div>
 
     </div>
-
-    )}
+  </div>
     </>
 
   );

@@ -25,7 +25,7 @@ export default function AirHOSDashboard() {
   // 하드코딩된 대시보드 데이터 (API 제거됨)
   const getHardcodedData = () => {
     return {
-      roomName: "SCH 공학관 9209",
+      roomName: "멀티미디어관 M501",
       recommendedTime: "9:00 오전",
       etaMinutes: 12,
       accuracy: 86,
@@ -114,13 +114,8 @@ export default function AirHOSDashboard() {
         humidity: { min: 30, max: 80 }
       });
       setCurrentTime('2025-09-29T23:29:00');
-      setPredictionData({
-        pred_30min: null,
-        status_by_metric: null,
-        vent_time_estimate: null,
-        advice: null,
-        aqi_score: null
-      });
+      // 예측 데이터는 응답 도착 전까지 null 유지 (텍스트가 미리 보이지 않도록)
+      setPredictionData(null);
     }
   };
 

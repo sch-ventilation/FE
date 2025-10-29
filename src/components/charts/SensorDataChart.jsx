@@ -10,6 +10,7 @@ import {
   Cell,
   Line,
   Area,
+  ReferenceLine,
 } from "recharts";
 import { apiCall, API_CONFIG } from "../../config/api";
 
@@ -38,9 +39,11 @@ const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
   };
 
   const handleDateSelect = (day) => {
-    const newDate = new Date(selectedYear, selectedMonth - 1, day);
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     setCurrentDate(newDate);
     setSelectedDay(day);
+    setSelectedMonth(newDate.getMonth() + 1);
+    setSelectedYear(newDate.getFullYear());
     setShowCalendar(false);
     
     // 해당 날짜로 스크롤
@@ -139,6 +142,7 @@ const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
             습도: apiData?.humidity || null,
             휘발성유기화합물: apiData?.tvoc || null,
             air_quality_index: apiData?.air_quality_index || null,
+            status: apiData?.status || null,
           };
 
           // 각 센서별로 안정/위험 여부 표시
@@ -550,6 +554,16 @@ const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
                     connectNulls={false}
                   />
                 );
+                // 기준치 값 라벨 (빨간색, Y축 왼쪽)
+                lines.push(
+                  <ReferenceLine
+                    key="max-threshold-label"
+                    y={criteria.max}
+                    stroke="transparent"
+                    ifOverflow="extendDomain"
+                    label={{ value: `${criteria.max}`, position: 'left', fill: '#ef4444', fontSize: 16, fontWeight: 700 }}
+                  />
+                );
               }
               
               // 범위 기준선 (온도, 습도)
@@ -600,6 +614,14 @@ const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
               axisLine={false}
               tickLine={false}
               tick={{ fill: isDarkMode ? '#9ca3af' : '#6b7280', fontSize: 16, fontWeight: 500 }}
+              tickFormatter={(value) => {
+                const c = sensorCriteria[selectedSensor];
+                // 단일 상한 기준(max)만 있는 센서에서, 기준치 값과 동일한 기본 y축 눈금은 숨김
+                if (c && c.max !== undefined && c.min === undefined && Number(value) === Number(c.max)) {
+                  return '';
+                }
+                return Math.round(value);
+              }}
               label={{ 
                 value: `${selectedSensor} (${currentSensor?.unit})`, 
                 angle: -90, 
@@ -706,9 +728,18 @@ const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
                       }}>
                         <div style={{ fontSize: 17, fontWeight: 700, color: '#1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span>공기질 점수: <span style={{ color: '#1f2937' }}>{data.air_quality_index !== null && data.air_quality_index !== undefined ? data.air_quality_index : Math.round(value * 100 / (sensorCriteria[selectedSensor]?.max || 100))}</span></span>
-                          <span style={{ fontSize: 16, fontWeight: 600, color: isExceeded ? '#ef4444' : '#10b981' }}>
-                            {isExceeded ? '나쁨' : '정상'}
-                          </span>
+                          {(() => {
+                            if (data.status === null || data.status === undefined) {
+                              return null;
+                            }
+                            const statusText = (data.status === 'good' ? '좋음' : data.status === 'moderate' ? '보통' : data.status === 'bad' ? '위험' : data.status);
+                            const statusColor = (data.status === 'good' ? '#059669' : data.status === 'moderate' ? '#d97706' : data.status === 'bad' ? '#dc2626' : '#1f2937');
+                            return (
+                              <span style={{ fontSize: 16, fontWeight: 600, color: statusColor }}>
+                                {statusText}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

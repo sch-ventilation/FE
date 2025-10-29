@@ -71,6 +71,19 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
     return '나쁨';
   };
 
+  // cross_time(ISO) -> "h:mm 오전/오후" 문자열 생성
+  const formatKoreanTimeString = (isoString) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const rawHour = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = rawHour < 12 ? '오전' : '오후';
+    let hour12 = rawHour % 12;
+    if (hour12 === 0) hour12 = 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
   return (
     <div className="grid grid-cols-10 gap-6 mb-6">
       {/* 추천 환기 시간 */}
@@ -80,61 +93,35 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
       } : {}}>
         <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>추천 환기 시간</h2>
         <div className="flex-1 flex justify-center items-center">
-          {predictionData?.vent_time_estimate === null ? (
-            <span className="text-4xl font-bold transition-colors duration-300" style={{ color: '#61BC90' }}>쾌적함</span>
+          {predictionData && predictionData.vent_time_estimate !== undefined ? (
+            predictionData.vent_time_estimate === null ? (
+              <span className="text-4xl font-bold transition-colors duration-300" style={{ color: '#61BC90' }}>쾌적함</span>
+            ) : (typeof predictionData.vent_time_estimate === 'object' && predictionData.vent_time_estimate.cross_time) ? (
+              <div className="flex flex-col gap-3 items-start">
+                <p className="px-4 py-2 rounded-lg text-3xl font-medium" style={{ color: '#000000', backgroundColor: '#FDCF1D' }}>
+                  {Math.round(Number(predictionData.vent_time_estimate.minutes_to_cross))}분 후
+                </p>
+                <div className="flex items-baseline justify-center gap-2 w-full">
+                  {/* 시간과 오전/오후 분리 표시 */}
+                  {(() => {
+                    const timeText = formatKoreanTimeString(predictionData.vent_time_estimate.cross_time);
+                    const [timePart, meridiemPart] = timeText.split(' ');
+                    return (
+                      <>
+                        <span className={`text-7xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{timePart}</span>
+                        <span className={`text-2xl font-normal transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{meridiemPart}</span>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            ) : (
+              // 예기치 않은 형태면 빈 상태 유지
+              <></>
+            )
           ) : (
-            <div className="flex flex-col gap-3 items-start">
-              <p className="px-4 py-2 rounded-lg text-3xl font-medium" style={{ color: '#000000', backgroundColor: '#FDCF1D' }}>{data.etaMinutes}분 후</p>
-              <div className="flex items-baseline justify-center gap-2 w-full">
-                <span className={`text-7xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{data.recommendedTime.split(' ')[0]}</span>
-                <span className={`text-2xl font-normal transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{data.recommendedTime.split(' ')[1]}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 현재 공기질 점수 */}
-      <div className={`rounded-2xl p-6 col-span-3 shadow-lg transition-colors duration-300 flex flex-col ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={isDarkMode ? { 
-        boxShadow: '0 0 6px 2px rgba(55, 65, 81, 0.4), 0 0 12px 4px rgba(55, 65, 81, 0.2), 0 0 18px 6px rgba(55, 65, 81, 0.1)',
-        filter: 'blur(0.5px)'
-      } : {}}>
-        <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>현재 공기질 점수</h2>
-        <div className="flex justify-center items-center flex-1">
-          {predictionData?.aqi_score && (
-            <div className="flex flex-col items-center gap-3">
-              <CircularProgress 
-                percentage={predictionData.aqi_score.overall || 0} 
-                size={220} 
-                isDarkMode={isDarkMode}
-                showIcon={false}
-                customColor={
-                  predictionData.aqi_score.status === 'good' ? '#61BC90' :
-                  predictionData.aqi_score.status === 'moderate' ? '#f59e0b' :
-                  predictionData.aqi_score.status === 'bad' ? '#ef4444' :
-                  undefined
-                }
-              />
-              <div className="flex items-center gap-2 mt-2">
-                {predictionData.aqi_score.status === 'good' ? (
-                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                ) : predictionData.aqi_score.status === 'moderate' ? (
-                  <span className="text-2xl">⚠️</span>
-                ) : predictionData.aqi_score.status === 'bad' ? (
-                  <span className="text-2xl">🚨</span>
-                ) : null}
-                <span className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                  {predictionData.aqi_score.status === 'good' ? '좋음' :
-                   predictionData.aqi_score.status === 'moderate' ? '보통' :
-                   predictionData.aqi_score.status === 'bad' ? '나쁨' :
-                   predictionData.aqi_score.status}
-                </span>
-              </div>
-            </div>
+            // API 응답 전: 박스만, 텍스트 없음
+            <></>
           )}
         </div>
       </div>
@@ -238,6 +225,52 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      
+      {/* 현재 공기질 점수 */}
+      <div className={`rounded-2xl p-6 col-span-3 shadow-lg transition-colors duration-300 flex flex-col ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={isDarkMode ? { 
+        boxShadow: '0 0 6px 2px rgba(55, 65, 81, 0.4), 0 0 12px 4px rgba(55, 65, 81, 0.2), 0 0 18px 6px rgba(55, 65, 81, 0.1)',
+        filter: 'blur(0.5px)'
+      } : {}}>
+        <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>현재 공기질 점수</h2>
+        <div className="flex justify-center items-center flex-1">
+          {predictionData?.aqi_score && (
+            <div className="flex flex-col items-center gap-3">
+              <CircularProgress 
+                percentage={predictionData.aqi_score.overall || 0} 
+                size={220} 
+                isDarkMode={isDarkMode}
+                showIcon={false}
+                customColor={
+                  predictionData.aqi_score.status === 'good' ? '#61BC90' :
+                  predictionData.aqi_score.status === 'moderate' ? '#f59e0b' :
+                  predictionData.aqi_score.status === 'bad' ? '#ef4444' :
+                  undefined
+                }
+              />
+              <div className="flex items-center gap-2 mt-2">
+                {predictionData.aqi_score.status === 'good' ? (
+                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : predictionData.aqi_score.status === 'moderate' ? (
+                  <span className="text-2xl">⚠️</span>
+                ) : predictionData.aqi_score.status === 'bad' ? (
+                  <span className="text-2xl">🚨</span>
+                ) : null}
+                <span className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                  {predictionData.aqi_score.status === 'good' ? '좋음' :
+                   predictionData.aqi_score.status === 'moderate' ? '보통' :
+                   predictionData.aqi_score.status === 'bad' ? '나쁨' :
+                   predictionData.aqi_score.status}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 
 const Header = ({ data, isDarkMode, setIsDarkMode, onRefresh }) => {
-  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
   return (
     <div className="flex items-center justify-between mb-8">
       <div className="flex items-center gap-4">
@@ -11,44 +10,12 @@ const Header = ({ data, isDarkMode, setIsDarkMode, onRefresh }) => {
             <span className={`transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-black'}`}>HOS</span>
           </span>
         </div>
-        <div className="relative inline-block">
-          <button 
-            onClick={() => setShowRoomDropdown(!showRoomDropdown)}
-            className={`px-4 py-3 rounded-lg border flex items-center gap-2 transition-colors duration-300 whitespace-nowrap ${
-              isDarkMode 
-                ? 'bg-black border-gray-600 text-white hover:bg-gray-800' 
-                : 'bg-gray-100 border-gray-400 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <span className="text-lg font-medium">{data.roomName}</span>
-            <svg className={`w-4 h-4 ${isDarkMode ? 'text-white' : 'text-black'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          
-          {showRoomDropdown && (
-            <div className={`absolute top-full left-0 mt-2 min-w-full rounded-lg shadow-lg z-50 ${
-              isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
-            }`}>
-              <div className="py-1">
-                <button className={`w-full text-left px-3 py-1.5 text-lg transition-colors duration-300 whitespace-nowrap ${
-                  isDarkMode ? 'text-white hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
-                }`}>
-                  강의실 A
-                </button>
-                <button className={`w-full text-left px-3 py-1.5 text-lg transition-colors duration-300 whitespace-nowrap ${
-                  isDarkMode ? 'text-white hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
-                }`}>
-                  강의실 B
-                </button>
-                <button className={`w-full text-left px-3 py-1.5 text-lg transition-colors duration-300 whitespace-nowrap ${
-                  isDarkMode ? 'text-white hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
-                }`}>
-                  강의실 C
-                </button>
-              </div>
-            </div>
-          )}
+        <div className={`px-4 py-3 rounded-lg border transition-colors duration-300 whitespace-nowrap ${
+          isDarkMode 
+            ? 'bg-black border-gray-600 text-white' 
+            : 'bg-gray-100 border-gray-400 text-gray-700'
+        }`}>
+          <span className="text-lg font-medium">{data.roomName}</span>
         </div>
       </div>
       <div className="flex items-center gap-4">

@@ -1,23 +1,32 @@
 import React from "react";
 
 const HealthConditionRow = ({ data, isDarkMode, emotionData }) => {
-  // API 데이터로 건강 컨디션 매핑
-  const getEmojiAndColor = (value) => {
-    if (value === '정상' || value === '좋음') {
-      return { emoji: '😊', color: '#61BC90' };
-    } else if (value === '보통') {
-      return { emoji: '😐', color: '#f59e0b' };
-    } else if (value === '나쁨' || value === '부적합') {
-      return { emoji: '😟', color: '#ef4444' };
+  // grade_kr 기반 이모지/색상 매핑
+  const getEmojiAndColor = (gradeKr) => {
+    const normalized = (gradeKr || '').replace(/\s+/g, ' ').trim();
+    switch (normalized) {
+      case '매우 좋음':
+        return { emoji: '😄', color: '#008F4A' }; // 진한 초록
+      case '좋음':
+        return { emoji: '🙂', color: '#61BC90' }; // 밝은 초록
+      case '보통':
+        return { emoji: '😐', color: '#FACC15' }; // 노랑
+      case '나쁨':
+        return { emoji: '😕', color: '#FB923C' }; // 주황
+      case '매우 나쁨':
+        return { emoji: '😞', color: '#EF4444' }; // 빨강
+      default:
+        return { emoji: '', color: '#9CA3AF' }; // 회색 (알 수 없음)
     }
-    return { emoji: '😐', color: '#6b7280' };
   };
 
+  // cognition은 표시하지 않음. grade_kr만 사용
   const healthConditions = emotionData ? [
-    { desc: '쾌적도', value: emotionData.discomfort, label: emotionData.discomfort },
-    { desc: '두통', value: emotionData.headache, label: emotionData.headache },
-    { desc: '집중도', value: emotionData.focus, label: emotionData.focus },
-    { desc: '수면', value: emotionData.sleep, label: emotionData.sleep }
+    { desc: '쾌적도', value: emotionData?.discomfort?.grade_kr, label: emotionData?.discomfort?.grade_kr },
+    { desc: '작업 정확도', value: emotionData?.task_accuracy?.grade_kr, label: emotionData?.task_accuracy?.grade_kr },
+    { desc: '작업 속도', value: emotionData?.task_speed_penalty?.grade_kr, label: emotionData?.task_speed_penalty?.grade_kr },
+    { desc: '집중도', value: emotionData?.attention?.grade_kr, label: emotionData?.attention?.grade_kr },
+    { desc: '피로', value: emotionData?.fatigue?.grade_kr, label: emotionData?.fatigue?.grade_kr },
   ] : [];
 
   return (
@@ -27,14 +36,14 @@ const HealthConditionRow = ({ data, isDarkMode, emotionData }) => {
         filter: 'blur(0.5px)'
       } : {}}>
         <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>건강 컨디션</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           {healthConditions.map((item, i) => {
             const { emoji, color } = getEmojiAndColor(item.value);
             return (
               <div key={i} className={`rounded-xl p-4 text-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                 <p className={`text-sm font-medium mb-2 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{item.desc}</p>
                 <div className="text-4xl mb-2">{emoji}</div>
-                <p className="text-base font-medium" style={{ color }}>
+                <p className="text-base font-bold" style={{ color }}>
                   {item.label}
                 </p>
               </div>
