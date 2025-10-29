@@ -1832,7 +1832,7 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
         </h2>
         
         {predictionData && predictionData.pred_30min ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-6 gap-4">
             {Object.entries(predictionData.pred_30min).map(([key, value]) => {
               const getSensorName = (key) => {
                 const names = {

@@ -95,7 +95,7 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
         <div className="flex-1 flex justify-center items-center">
           {predictionData && predictionData.vent_time_estimate !== undefined ? (
             predictionData.vent_time_estimate === null ? (
-              <span className="text-3xl font-bold transition-colors duration-300" style={{ color: '#61BC90' }}>쾌적</span>
+              <span className="text-4xl font-bold transition-colors duration-300" style={{ color: '#61BC90' }}>쾌적</span>
             ) : (typeof predictionData.vent_time_estimate === 'object' && predictionData.vent_time_estimate.cross_time) ? (
               <div className="flex flex-col gap-3 items-start">
                 <p className="px-4 py-2 rounded-lg text-3xl font-medium" style={{ color: '#000000', backgroundColor: '#FDCF1D' }}>
@@ -240,7 +240,7 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
             <div className="flex flex-col items-center gap-3">
               <CircularProgress 
                 percentage={predictionData.aqi_score.overall || 0} 
-                size={220} 
+                size={280} 
                 isDarkMode={isDarkMode}
                 showIcon={false}
                 status={predictionData.aqi_score.status}
