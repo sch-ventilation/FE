@@ -8,11 +8,11 @@ const HealthConditionRow = ({ data, isDarkMode, emotionData }) => {
       case '매우 좋음':
         return { emoji: '😄', color: '#008F4A' }; // 진한 초록
       case '좋음':
-        return { emoji: '🙂', color: '#61BC90' }; // 밝은 초록
+        return { emoji: '🙂', color: '#008F4A' }; // 밝은 초록
       case '보통':
         return { emoji: '😐', color: '#FACC15' }; // 노랑
       case '나쁨':
-        return { emoji: '😕', color: '#FB923C' }; // 주황
+        return { emoji: '😕', color: '#EF4444' }; // 주황
       case '매우 나쁨':
         return { emoji: '😞', color: '#EF4444' }; // 빨강
       default:
@@ -36,14 +36,14 @@ const HealthConditionRow = ({ data, isDarkMode, emotionData }) => {
         filter: 'blur(0.5px)'
       } : {}}>
         <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>건강 컨디션</h2>
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-5 gap-5">
           {healthConditions.map((item, i) => {
             const { emoji, color } = getEmojiAndColor(item.value);
             return (
-              <div key={i} className={`rounded-xl p-4 text-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p className={`text-sm font-medium mb-2 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{item.desc}</p>
-                <div className="text-4xl mb-2">{emoji}</div>
-                <p className="text-base font-bold" style={{ color }}>
+              <div key={i} className={`rounded-xl p-5 text-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                <p className={`text-base md:text-lg font-bold mb-3 transition-colors duration-300 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{item.desc}</p>
+                <div className="text-5xl mb-4">{emoji}</div>
+                <p className="text-lg font-bold mt-1" style={{ color }}>
                   {item.label}
                 </p>
               </div>

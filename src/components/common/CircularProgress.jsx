@@ -1,6 +1,6 @@
 import React from "react";
 
-const CircularProgress = ({ percentage, size = 180, showIcon = true, customText = null, isDarkMode = false, customColor = null }) => {
+const CircularProgress = ({ percentage, size = 180, showIcon = true, customText = null, isDarkMode = false, customColor = null, status = null }) => {
   // strokeWidth를 사이즈에 비례하여 계산 (기준: size 220일 때 strokeWidth 35)
   const strokeWidth = Math.round(35 * (size / 220));
   const radius = (size - strokeWidth * 1.2) / 2; // strokeWidth에 맞춰 여유 공간 계산
@@ -51,7 +51,22 @@ const CircularProgress = ({ percentage, size = 180, showIcon = true, customText 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ marginTop: '-10px' }}>
-        {showIcon ? (
+        {status ? (
+          // 상태에 따른 아이콘 표시
+          <div className="mb-1">
+            {status === 'good' ? (
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            ) : status === 'moderate' ? (
+              <span className="text-2xl">⚠️</span>
+            ) : status === 'bad' ? (
+              <span className="text-2xl">🚨</span>
+            ) : null}
+          </div>
+        ) : showIcon ? (
           <svg className="w-6 h-6 mb-1" fill={customColor || "#61BC90"} viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>

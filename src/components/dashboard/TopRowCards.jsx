@@ -95,7 +95,7 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
         <div className="flex-1 flex justify-center items-center">
           {predictionData && predictionData.vent_time_estimate !== undefined ? (
             predictionData.vent_time_estimate === null ? (
-              <span className="text-4xl font-bold transition-colors duration-300" style={{ color: '#61BC90' }}>쾌적함</span>
+              <span className="text-3xl font-bold transition-colors duration-300" style={{ color: '#61BC90' }}>쾌적</span>
             ) : (typeof predictionData.vent_time_estimate === 'object' && predictionData.vent_time_estimate.cross_time) ? (
               <div className="flex flex-col gap-3 items-start">
                 <p className="px-4 py-2 rounded-lg text-3xl font-medium" style={{ color: '#000000', backgroundColor: '#FDCF1D' }}>
@@ -134,28 +134,28 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
         <h2 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>현재 공기질 지수</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className={`rounded-lg p-3 py-5 flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-2">
               <div 
-                className="w-2 h-2 rounded-full"
+                className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: getSensorColor(getSensorPercentage(currentSensorData.temperature, 'temperature')) }}
               ></div>
-              <span className={`text-xs transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>온도</span>
+              <span className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>온도</span>
             </div>
             <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{currentSensorData.temperature}°C</p>
           </div>
           <div className={`rounded-lg p-3 py-5 flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-2">
               <div 
-                className="w-2 h-2 rounded-full"
+                className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: getSensorColor(getSensorPercentage(currentSensorData.humidity, 'humidity')) }}
               ></div>
-              <span className={`text-xs transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>습도</span>
+              <span className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>습도</span>
             </div>
             <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{currentSensorData.humidity}%</p>
           </div>
           <div className={`rounded-lg p-3 py-5 flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <p className={`text-xs mb-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>미세먼지</p>
-            <p className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className={`text-base font-semibold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>미세먼지</p>
+            <p className={`text-lg font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {getSensorStatus(getSensorPercentage(currentSensorData.pm10, 'fineDust'))} ({currentSensorData.pm10}㎍/㎥)
             </p>
             <div className="w-3/4 mt-2">
@@ -172,8 +172,8 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
             </div>
           </div>
           <div className={`rounded-lg p-3 py-5 flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <p className={`text-xs mb-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>초미세먼지</p>
-            <p className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className={`text-base font-semibold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>초미세먼지</p>
+            <p className={`text-lg font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {getSensorStatus(getSensorPercentage(currentSensorData.pm25, 'ultrafineDust'))} ({currentSensorData.pm25}㎍/㎥)
             </p>
             <div className="w-3/4 mt-2">
@@ -190,8 +190,8 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
             </div>
           </div>
           <div className={`rounded-lg p-3 py-5 flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <p className={`text-xs mb-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>이산화탄소</p>
-            <p className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className={`text-base font-semibold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>이산화탄소</p>
+            <p className={`text-lg font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {getSensorStatus(getSensorPercentage(currentSensorData.co2, 'co2'))} ({currentSensorData.co2}ppm)
             </p>
             <div className="w-3/4 mt-2">
@@ -208,8 +208,8 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
             </div>
           </div>
           <div className={`rounded-lg p-3 py-5 flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <p className={`text-xs mb-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>휘발성유기화합물</p>
-            <p className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className={`text-base font-semibold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>휘발성유기화합물</p>
+            <p className={`text-lg font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {getSensorStatus(getSensorPercentage(currentSensorData.tvoc, 'voc'))} ({currentSensorData.tvoc}㎍/㎥)
             </p>
             <div className="w-3/4 mt-2">
@@ -243,6 +243,7 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
                 size={220} 
                 isDarkMode={isDarkMode}
                 showIcon={false}
+                status={predictionData.aqi_score.status}
                 customColor={
                   predictionData.aqi_score.status === 'good' ? '#61BC90' :
                   predictionData.aqi_score.status === 'moderate' ? '#f59e0b' :
@@ -250,25 +251,6 @@ const TopRowCards = ({ data, sensorStatus, thresholds, isDarkMode, predictionDat
                   undefined
                 }
               />
-              <div className="flex items-center gap-2 mt-2">
-                {predictionData.aqi_score.status === 'good' ? (
-                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                ) : predictionData.aqi_score.status === 'moderate' ? (
-                  <span className="text-2xl">⚠️</span>
-                ) : predictionData.aqi_score.status === 'bad' ? (
-                  <span className="text-2xl">🚨</span>
-                ) : null}
-                <span className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                  {predictionData.aqi_score.status === 'good' ? '좋음' :
-                   predictionData.aqi_score.status === 'moderate' ? '보통' :
-                   predictionData.aqi_score.status === 'bad' ? '나쁨' :
-                   predictionData.aqi_score.status}
-                </span>
-              </div>
             </div>
           )}
         </div>

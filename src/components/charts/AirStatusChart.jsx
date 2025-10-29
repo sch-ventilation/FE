@@ -25,6 +25,7 @@ import {
 } from "recharts";
 
 import CircularProgress from "../common/CircularProgress";
+import InfoTooltip from "../common/InfoTooltip";
 
 import { apiCall, API_CONFIG } from "../../config/api";
 
@@ -638,6 +639,16 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
     }
 
     // Mock 데이터에서 air_quality_index가 있으면 그것을 사용, 없으면 계산
+    // 23시 59분 데이터는 노란 점만 표시하고 그래프는 그리지 않음
+    if (item.time === '23시 59분' && item.predictedVent) {
+      return {
+        ...item,
+        airIndex: null,
+        needsVent: false,
+        airIndex_bar: null,
+      };
+    }
+    
     const airIndex = item.air_quality_index || calculateAQI(item);
     return {
       ...item,
@@ -1065,7 +1076,10 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
 
         <div className="flex items-center justify-between mb-8">
 
-          <h2 className={`text-lg font-semibold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>공기질 점수 변화 및 환기 예측 시점</h2>
+          <div className="flex items-center gap-3">
+            <h2 className={`text-lg font-semibold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>공기질 점수 변화 및 환기 예측 시점</h2>
+            <InfoTooltip isDarkMode={isDarkMode} />
+          </div>
 
           <div className="relative flex-[1] flex justify-end calendar-container">
 
@@ -2006,6 +2020,11 @@ const AirStatusChart = ({ data, thresholds, currentTime, isDarkMode, predictionD
           size={200} 
           showIcon={false} 
           isDarkMode={isDarkMode}
+          status={
+            accuracyData?.overall_accuracy >= 90 ? 'good' : 
+            accuracyData?.overall_accuracy >= 80 ? 'moderate' : 
+            'bad'
+          }
           customColor={
             accuracyData?.overall_accuracy >= 90 ? '#61BC90' : 
             accuracyData?.overall_accuracy >= 80 ? '#f59e0b' : 

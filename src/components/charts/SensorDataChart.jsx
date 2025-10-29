@@ -13,6 +13,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { apiCall, API_CONFIG } from "../../config/api";
+import InfoTooltip from "../common/InfoTooltip";
 
 const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
   const [graphData, setGraphData] = useState([]);
@@ -254,7 +255,10 @@ const SensorDataChart = ({ data, thresholds, isDarkMode }) => {
       filter: 'blur(0.5px)'
     } : {}}>
       <div className="flex items-center justify-between mb-8">
-        <h2 className={`text-lg font-semibold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>세부 공기질 변화</h2>
+        <div className="flex items-center gap-3">
+          <h2 className={`text-lg font-semibold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>세부 공기질 변화</h2>
+          <InfoTooltip isDarkMode={isDarkMode} />
+        </div>
         <div className="relative calendar-container flex-[1] flex justify-end">
           <button 
             onClick={() => setShowCalendar(!showCalendar)}
